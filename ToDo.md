@@ -130,11 +130,14 @@ blog config                                     # 설정 확인/편집
   - 브라우저 자동화는 약관 위험 → **자동 발행은 하지 않는다.**
   - 채택 경로: 마크다운 → HTML 변환 → 클립보드 복사 → 사용자가 에디터에 붙여넣기.
   - 아래 "선택한 플랫폼 어댑터 1개 구현"(WordPress/GitHub Pages)은 이 결정에 따라 **보류**한다.
-- [ ] `publish/clipboard.py`: 마크다운→HTML 변환 후 클립보드 복사 (티스토리/네이버 복붙 경로)
-- [ ] 선택한 플랫폼 어댑터 1개 구현:
-  - WordPress: REST API, **draft 상태로 업로드** (최종 발행 버튼은 사람이)
-  - GitHub Pages: `_posts/`에 파일 생성 → `git commit & push`
-- [ ] 태그/카테고리 자동 매핑 (polisher 산출물 → 플랫폼 값)
+- [x] `publish/render.py`: 마크다운 → 네이버 스마트에디터용 HTML (인라인 style 주입)
+- [x] `publish/clipboard.py`: macOS 클립보드에 `«class HTML»` 플레이버 직접 심기
+  - pyperclip은 평문만 담아 서식이 사라진다 → osascript로 HTML+평문 두 플레이버를 동시에 넣는다.
+- [x] `publish/naver.py` + `blog publish [번호]`: 복사 후 붙여넣기 순서까지 안내
+- [x] 태그 자동 전달 (polisher 산출물 → `#태그` 형태로 출력)
+  - 네이버 **카테고리**는 에디터 드롭다운이라 자동화 대상이 아니다. 사람이 고른다.
+- [ ] ~~선택한 플랫폼 어댑터 1개 구현 (WordPress / GitHub Pages)~~ → **보류**
+  - 네이버 블로그를 쓰기로 확정했으므로 지금은 필요 없다. 나중에 블로그를 옮기면 그때.
 - [ ] **PyPI 배포 파이프라인**: GitHub Actions — 태그 푸시 시 `uv build` → `uv publish` (Trusted Publishing 사용, 토큰 하드코딩 금지)
 - [ ] README에 설치·사용법 정리, `v0.1.0` 릴리스
 

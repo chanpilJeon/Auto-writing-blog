@@ -122,3 +122,10 @@ def recent(conn: sqlite3.Connection, limit: int = 20) -> list[Run]:
 def get(conn: sqlite3.Connection, run_id: int) -> sqlite3.Row | None:
     """실행 한 건 전체(기획안·초안 포함)."""
     return conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
+
+
+def latest_with_post(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    """글 파일이 만들어진 것 중 가장 최근 실행."""
+    return conn.execute(
+        "SELECT * FROM runs WHERE post_path IS NOT NULL ORDER BY id DESC LIMIT 1"
+    ).fetchone()

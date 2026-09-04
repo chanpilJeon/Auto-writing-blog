@@ -17,7 +17,10 @@ from blogwriter import config as config_module
 from blogwriter.core.llm import LLMError
 from blogwriter.core.models import Source
 from blogwriter.core.pipeline import run as run_pipeline
-from blogwriter.store import db
+from blogwriter.publish.base import PublishResult
+from blogwriter.publish.clipboard import ClipboardError
+from blogwriter.publish.naver import NaverClipboardPublisher
+from blogwriter.store import db, posts
 
 app = typer.Typer(
     name="blog",
@@ -193,10 +196,82 @@ def resume() -> None:
     _not_implemented("blog resume (Phase 2)")
 
 
+def _resolve_post_row(conn, run_id: int | None):
+    """발행할 글의 이력 행을 찾는다. 번호를 안 주면 가장 최근 글."""
+    if run_id is not None:
+        row = db.get(conn, run_id)
+        if row is None:
+            _die(f"{run_id}번 글이 없습니다.  blog list 로 번호를 확인하세요.")
+        if not row["post_path"]:
+            _die(f"{run_id}번은 글 파일이 없습니다(상태: {row['status']}).")
+        return row
+
+    row = db.latest_with_post(conn)
+    if row is None:
+        _die('아직 발행할 글이 없습니다.  blog write --text "..." 로 먼저 글을 써 보세요.')
+    return row
+
+
+def _show_result(result: PublishResult) -> None:
+    typer.secho(f"[완료] {result.summary}", fg=typer.colors.GREEN, bold=True)
+    typer.echo("")
+    typer.secho("이제 이렇게 하세요", fg=typer.colors.CYAN, bold=True)
+    for number, step in enumerate(result.steps, start=1):
+        typer.echo(f"  {number}. {step}")
+    if result.notes:
+        typer.echo("")
+        for note in result.notes:
+            typer.echo(f"  · {note}")
+
+
 @app.command()
-def publish() -> None:
-    """완성된 글을 발행(또는 클립보드 복사)한다."""
-    _not_implemented("blog publish (Phase 3)")
+def publish(
+    run_id: Annotated[
+        int | None,
+        typer.Argument(help="발행할 글 번호. 생략하면 가장 최근 글."),
+    ] = None,
+    fmt: Annotated[
+        str,
+        typer.Option("--format", help="html(서식 유지, 기본) 또는 text(평문)."),
+    ] = "html",
+    with_source: Annotated[
+        bool,
+        typer.Option("--source/--no-source", help="글 끝에 출처 링크를 붙일지."),
+    ] = True,
+) -> None:
+    """완성된 글을 네이버 블로그에 붙여 넣을 수 있게 클립보드로 복사한다.
+
+    네이버·티스토리는 글쓰기 API가 종료돼 자동 발행이 불가능하다.
+    그래서 '붙여넣기 직전'까지를 자동화한다.
+    """
+    if fmt not in {"html", "text"}:
+        _die("--format 은 html 또는 text 만 됩니다.")
+
+    conn = db.connect()
+    try:
+        row = _resolve_post_row(conn, run_id)
+        path = Path(row["post_path"])
+        try:
+            post = posts.load(path)
+        except FileNotFoundError as exc:
+            _die(f"{exc}\n  파일을 옮기거나 지우지 않았는지 확인하세요.")
+            return
+
+        publisher = NaverClipboardPublisher(
+            plain_only=(fmt == "text"), with_source=with_source
+        )
+        try:
+            result = publisher.publish(post)
+        except ClipboardError as exc:
+            _die(str(exc))
+            return
+
+        db.update(conn, row["id"], status="published", published_to=result.target)
+    finally:
+        conn.close()
+
+    typer.echo("")
+    _show_result(result)
 
 
 if __name__ == "__main__":

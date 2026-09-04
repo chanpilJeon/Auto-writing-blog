@@ -8,6 +8,7 @@ frontmatter를 쓰는 이유는 어떤 발행 경로(워드프레스·깃허브�
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 import frontmatter
@@ -56,3 +57,23 @@ def save(post: Post, drafts_dir: Path) -> Path:
     path = _unique(drafts_dir / f"{post.created.isoformat()}-{slugify(post.title)}.md")
     path.write_text(frontmatter.dumps(document) + "\n", encoding="utf-8")
     return path
+
+
+def load(path: Path) -> Post:
+    """저장된 마크다운 파일을 다시 Post로 읽어 들인다."""
+    if not path.is_file():
+        raise FileNotFoundError(f"글 파일을 찾을 수 없습니다: {path}")
+
+    document = frontmatter.loads(path.read_text(encoding="utf-8"))
+    raw_date = document.get("date")
+    created = date.fromisoformat(str(raw_date)) if raw_date else date.today()
+
+    return Post(
+        title=str(document.get("title", path.stem)),
+        body=document.content,
+        tags=[str(tag) for tag in document.get("tags", []) or []],
+        description=str(document.get("description", "") or ""),
+        source_ref=document.get("source") or None,
+        created=created,
+        title_candidates=[str(t) for t in document.get("title_candidates", []) or []],
+    )

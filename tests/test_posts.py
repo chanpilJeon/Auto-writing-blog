@@ -27,3 +27,25 @@ def test_save_avoids_overwriting(tmp_path):
     second = save(post, tmp_path)
     assert first != second
     assert second.name.endswith("-2.md")
+
+
+def test_save_load_roundtrip(tmp_path):
+    from blogwriter.store.posts import load
+
+    original = Post(
+        title="원래 제목",
+        body="## 소제목\n\n본문이다.\n",
+        tags=["가", "나"],
+        description="요약",
+        source_ref="https://example.com/a",
+        created=date(2026, 9, 4),
+        title_candidates=["원래 제목", "다른 제목"],
+    )
+    restored = load(save(original, tmp_path))
+
+    assert restored.title == original.title
+    assert restored.body.strip() == original.body.strip()
+    assert restored.tags == original.tags
+    assert restored.source_ref == original.source_ref
+    assert restored.created == original.created
+    assert restored.title_candidates == original.title_candidates
