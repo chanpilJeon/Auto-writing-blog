@@ -119,7 +119,11 @@ blog config                                     # 설정 확인/편집
 - [x] `prompts/polish.md`: 본문 → 제목 후보 5개·태그·메타 설명 JSON 프롬프트
 - [x] `planner.py` / `writer.py` / `polisher.py` 구현 — 각 단계 산출물을 SQLite에 저장(재실행 대비)
 - [x] `posts.py`: frontmatter(제목·날짜·태그·출처·상태) 붙여 `~/BlogDrafts/YYYY-MM-DD-슬러그.md` 저장
-- [x] `cli.py`: `blog write --text`, `blog write --file`, `blog config`, `blog list` 연결
+- [x] `cli.py`: `blog write`(클립보드) / `--text` / `--file`, `blog config`, `blog list` 연결
+  - [x] **옵션 없이 실행하면 클립보드를 읽는다** — 비개발자에게 "자료를 텍스트 파일로 저장"이
+        가장 큰 진입 장벽이었다. 복사(⌘+C) 후 `blog write` 한 줄이면 끝나도록 바꿈.
+  - [x] 파이프 입력은 `select`로 먼저 확인 — stdin이 열려 있고 아무도 쓰지 않는 환경에서
+        `read()`가 무한 대기하던 버그 수정.
 - [ ] **style-guide.md 작성**: 내가 쓴 글 2~3편 수집 + 말투/구조/금지어 정의
   - [x] 기본 스타일 가이드 템플릿 작성 → `~/.config/blogwriter/style-guide.md` 에 자동 생성
   - [ ] 내가 쓴 글 2~3편을 "좋은 예시" 항목에 붙여넣기 ← **사용자 작업**

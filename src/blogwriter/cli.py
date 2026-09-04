@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import select
 import sys
 from pathlib import Path
 from typing import Annotated
@@ -18,6 +19,7 @@ from blogwriter.core.backends import ClaudeCodeBackend
 from blogwriter.core.llm import LLMError
 from blogwriter.core.models import Source
 from blogwriter.core.pipeline import run as run_pipeline
+from blogwriter.publish import clipboard
 from blogwriter.publish.base import PublishResult
 from blogwriter.publish.clipboard import ClipboardError
 from blogwriter.publish.naver import NaverClipboardPublisher
@@ -29,6 +31,21 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+def _read_piped_input() -> str:
+    """파이프로 넘어온 입력을 읽는다. 없으면 빈 문자열.
+
+    ``select``로 먼저 확인하는 이유: stdin이 열려 있지만 아무도 쓰지 않는
+    환경(스크립트·자동화)에서 ``read()``가 영원히 멈춰 버리기 때문이다.
+    """
+    if sys.stdin.isatty():
+        return ""
+    try:
+        ready, _, _ = select.select([sys.stdin], [], [], 0.2)
+    except (OSError, ValueError):
+        return ""
+    return sys.stdin.read() if ready else ""
 
 
 def _die(message: str) -> None:
@@ -103,12 +120,16 @@ def write(
 ) -> None:
     """자료를 받아 블로그 글 초안을 작성한다.
 
-    예) blog write --text "붙여넣은 자료..."
-        blog write --file 자료.txt --source https://example.com/article
+    아무 옵션 없이 실행하면 **복사(⌘+C)해 둔 내용**을 그대로 읽어 글을 만든다.
+
+    예) blog write                    (기사를 복사한 뒤 실행 — 가장 간편)
+        blog write --source https://example.com/article
+        blog write --file 자료.txt
     """
     if text and file:
         _die("--text 와 --file 은 함께 쓸 수 없습니다. 하나만 고르세요.")
 
+    from_clipboard = False
     if file:
         if not file.is_file():
             _die(f"파일을 찾을 수 없습니다: {file}")
@@ -116,26 +137,43 @@ def write(
         kind, ref = "file", source_ref or str(file)
     elif text:
         material, kind, ref = text, "text", source_ref
-    elif not sys.stdin.isatty():
-        material, kind, ref = sys.stdin.read(), "text", source_ref
     else:
+        # 파이프로 넘어온 것이 있으면 그걸 쓰고, 없으면 클립보드에서 읽는다.
+        # 기사를 드래그해서 ⌘+C 한 뒤 바로 실행하는 것이 가장 편한 경로다.
+        piped = _read_piped_input()
+        if piped.strip():
+            material, kind, ref = piped, "text", source_ref
+        else:
+            try:
+                material = clipboard.read_plain()
+            except ClipboardError as exc:
+                _die(str(exc))
+                return
+            kind, ref, from_clipboard = "clipboard", source_ref, True
+
+    material = material.strip()
+    empty_help = (
+        "글로 만들 자료가 없습니다.\n\n"
+        "  이렇게 해 보세요:\n"
+        "    1. 블로그로 만들 기사나 글을 드래그해서 복사(⌘+C)\n"
+        "    2. 이 창에서 다시  uv run blog write  실행\n"
+    )
+    if not material:
+        _die(empty_help)
+        return
+    if len(material) < 100:
         _die(
-            "재료가 없습니다.\n"
-            '  예)  blog write --text "여기에 기사 내용을 붙여넣으세요"\n'
-            "       blog write --file 자료.txt"
+            f"자료가 너무 짧습니다({len(material)}자). 최소 100자 이상 필요합니다.\n\n"
+            + empty_help
         )
         return
 
-    material = material.strip()
-    if not material:
-        _die(
-            "재료가 없습니다.\n"
-            '  예)  blog write --text "여기에 기사 내용을 붙여넣으세요"\n'
-            "       blog write --file 자료.txt"
+    if from_clipboard:
+        preview = material[:40].replace("\n", " ")
+        typer.secho(
+            f'클립보드에서 {len(material)}자를 읽었습니다: "{preview}..."',
+            fg=typer.colors.CYAN,
         )
-        return
-    if len(material) < 100:
-        _die(f"자료가 너무 짧습니다({len(material)}자). 최소 100자 이상 넣어 주세요.")
 
     try:
         settings = config_module.load()

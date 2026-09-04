@@ -57,3 +57,17 @@ def copy_plain(text: str) -> None:
         pyperclip.copy(text)
     except Exception as exc:  # noqa: BLE001 - 플랫폼마다 실패 이유가 제각각이다
         raise ClipboardError(f"클립보드에 복사하지 못했습니다: {exc}") from exc
+
+
+def read_plain() -> str:
+    """클립보드에 복사돼 있는 글을 읽어 온다.
+
+    자료를 파일로 저장하는 단계를 없애기 위한 입구다.
+    기사를 드래그해서 ⌘+C 한 뒤 바로 ``blog write`` 를 실행하면 된다.
+    """
+    try:
+        import pyperclip
+
+        return pyperclip.paste() or ""
+    except Exception as exc:  # noqa: BLE001 - 플랫폼마다 실패 이유가 제각각이다
+        raise ClipboardError(f"클립보드를 읽지 못했습니다: {exc}") from exc
