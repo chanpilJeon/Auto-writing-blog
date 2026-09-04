@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# uv / 가상환경
+.venv/
+
+# 로컬 데이터
+*.db
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store

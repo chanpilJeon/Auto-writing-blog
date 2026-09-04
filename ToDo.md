@@ -90,12 +90,12 @@ blog config                                     # 설정 확인/편집
 ## 4. 구현 ToDo (Phase별)
 
 ### Phase 0 — 프로젝트 뼈대 (0.5일)
-- [ ] `uv init --package blogwriter` 로 프로젝트 생성, `src/` 레이아웃 구성
-- [ ] 의존성 추가: `uv add anthropic typer trafilatura python-frontmatter pyperclip`
-- [ ] 개발 의존성: `uv add --dev pytest respx ruff`
-- [ ] `pyproject.toml`에 `[project.scripts] blog = "blogwriter.cli:app"` 등록
-- [ ] `setup.sh` 작성 (§6) 및 동작 확인: 클린 클론 → `./setup.sh` → `blog --help` 성공
-- [ ] git 저장소 초기화, `.gitignore` (`.venv/`, `*.db`, `__pycache__/`)
+- [x] `uv init --package blogwriter` 로 프로젝트 생성, `src/` 레이아웃 구성
+- [x] 의존성 추가: `uv add anthropic typer trafilatura python-frontmatter pyperclip`
+- [x] 개발 의존성: `uv add --dev pytest respx ruff`
+- [x] `pyproject.toml`에 `[project.scripts] blog = "blogwriter.cli:app"` 등록
+- [x] `setup.sh` 작성 (§6) 및 동작 확인: 클린 클론 → `./setup.sh` → `blog --help` 성공
+- [x] git 저장소 초기화, `.gitignore` (`.venv/`, `*.db`, `__pycache__/`)
 
 ### Phase 1 — MVP: 텍스트 → 완성 글 (1~2일)
 - [ ] `config.py`: `ANTHROPIC_API_KEY` 검증, `config.toml` 생성 (모델명·출력 폴더·스타일 가이드 경로)
