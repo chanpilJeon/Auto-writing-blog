@@ -17,12 +17,14 @@ echo "-> uv $(uv --version)"
 echo "-> 라이브러리 설치 중..."
 uv sync --dev
 
-# 3. API 키 확인
-if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+# 3. Claude Code 확인 (글쓰기는 이걸로 돌아간다 — API 키 불필요)
+if command -v claude >/dev/null 2>&1; then
+  echo "-> Claude Code $(claude --version 2>/dev/null || echo '확인됨')"
+else
   echo ""
-  echo "!  ANTHROPIC_API_KEY가 설정되어 있지 않습니다."
-  echo "   글 작성 기능(Phase 1~)을 쓰려면 아래를 셸 프로필(~/.zshrc)에 추가하세요:"
-  echo "     export ANTHROPIC_API_KEY='sk-ant-...'"
+  echo "!  claude 명령을 찾을 수 없습니다."
+  echo "   이 프로그램은 이미 쓰고 계신 Claude Code로 글을 씁니다."
+  echo "   터미널에서 'claude --version' 이 되는지 확인하세요."
   echo ""
 fi
 

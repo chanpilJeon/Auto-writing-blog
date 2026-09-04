@@ -14,6 +14,7 @@ import typer
 
 from blogwriter import __version__
 from blogwriter import config as config_module
+from blogwriter.core.backends import ClaudeCodeBackend
 from blogwriter.core.llm import LLMError
 from blogwriter.core.models import Source
 from blogwriter.core.pipeline import run as run_pipeline
@@ -66,12 +67,23 @@ def config() -> None:
     typer.echo(f"  다듬기 {settings.polish_model}")
     typer.echo("")
 
-    try:
-        key = config_module.api_key()
-        typer.secho(f"API 키  설정됨 ({key[:10]}...)", fg=typer.colors.GREEN)
-    except config_module.ConfigError as exc:
-        typer.secho("API 키  없음", fg=typer.colors.RED)
-        typer.echo(str(exc))
+    typer.secho("Claude 연결 방식", fg=typer.colors.CYAN, bold=True)
+    if settings.backend == "claude-code":
+        typer.echo("  claude-code — 이미 쓰는 Claude 구독으로 돌립니다 (API 키 불필요)")
+        cli_path = ClaudeCodeBackend.find_cli()
+        if cli_path:
+            typer.secho(f"  준비됨: {cli_path}", fg=typer.colors.GREEN)
+        else:
+            typer.secho("  claude 명령을 찾을 수 없습니다.", fg=typer.colors.RED)
+            typer.echo("  터미널에서 `claude --version` 이 되는지 확인하세요.")
+    else:
+        typer.echo("  api — Claude API를 직접 호출합니다 (ANTHROPIC_API_KEY 필요)")
+        try:
+            key = config_module.api_key()
+            typer.secho(f"  준비됨: {key[:10]}...", fg=typer.colors.GREEN)
+        except config_module.ConfigError as exc:
+            typer.secho("  API 키 없음", fg=typer.colors.RED)
+            typer.echo(str(exc))
 
 
 @app.command()
@@ -126,8 +138,9 @@ def write(
         _die(f"자료가 너무 짧습니다({len(material)}자). 최소 100자 이상 넣어 주세요.")
 
     try:
-        config_module.api_key()
         settings = config_module.load()
+        if settings.backend == "api":
+            config_module.api_key()
     except config_module.ConfigError as exc:
         _die(str(exc))
         return
@@ -135,7 +148,8 @@ def write(
     def show(step: int, message: str) -> None:
         typer.secho(f"  [{step}/4] {message}...", fg=typer.colors.CYAN)
 
-    typer.echo(f"\n글을 쓰기 시작합니다. (자료 {len(material)}자, 보통 1~2분 걸립니다)\n")
+    how = "Claude Code 구독" if settings.backend == "claude-code" else "Claude API"
+    typer.echo(f"\n글을 쓰기 시작합니다. ({how} 사용 · 자료 {len(material)}자 · 보통 2~4분)\n")
     try:
         source = Source(text=material, kind=kind, ref=ref)
         post, run_id, path = run_pipeline(source, settings, on_step=show)
@@ -156,7 +170,13 @@ def write(
     for candidate in post.title_candidates[1:]:
         typer.echo(f"  - {candidate}")
     typer.echo("")
-    typer.echo(f"  이력 번호 {run_id} · 예상 비용 약 ${post.usage.cost_usd:.3f}")
+    if settings.backend == "claude-code":
+        typer.echo(
+            f"  이력 번호 {run_id} · 사용량 환산 약 ${post.usage.cost_usd:.3f} "
+            "(구독으로 돌렸으므로 추가 청구는 없습니다)"
+        )
+    else:
+        typer.echo(f"  이력 번호 {run_id} · 예상 비용 약 ${post.usage.cost_usd:.3f}")
     typer.echo(f"  파일 열기:  open {settings.drafts_dir}")
 
 

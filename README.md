@@ -31,28 +31,35 @@ cd ~/프로젝트/블로그-자동작성/Auto-writing-blog
 
 마지막에 `[완료] 셋업이 끝났습니다.` 가 나오면 성공입니다.
 
-### 1-4. API 키 넣기 (글을 쓰려면 필수)
+### 1-4. 확인하기
 
-이 프로그램은 Claude에게 글을 대신 쓰게 하므로 **Claude API 키**가 필요합니다.
-
-1. https://console.anthropic.com 에 로그인 → 왼쪽 메뉴 `API Keys` → `Create Key`
-2. `sk-ant-` 로 시작하는 긴 문자열이 나옵니다. **그 창을 닫으면 다시 볼 수 없으니 복사해 두세요.**
-3. 터미널에 아래를 붙여넣되, `sk-ant-여기에키` 부분을 복사한 키로 바꾸세요.
+이 프로그램은 **이미 쓰고 계신 Claude Code 구독으로** 글을 씁니다. API 키를 따로 발급받을 필요가 없습니다.
 
 ```bash
-echo 'export ANTHROPIC_API_KEY="sk-ant-여기에키"' >> ~/.zshrc
+uv run blog config
 ```
 
-4. **터미널을 완전히 껐다가 다시 켭니다.** (안 그러면 키가 적용되지 않습니다)
-5. 폴더로 다시 이동한 뒤 아래로 확인:
+아래처럼 초록색으로 `준비됨` 이 뜨면 끝입니다.
 
-```bash
-cd ~/프로젝트/블로그-자동작성/Auto-writing-blog && uv run blog config
+```
+Claude 연결 방식
+  claude-code — 이미 쓰는 Claude 구독으로 돌립니다 (API 키 불필요)
+  준비됨: /Users/…/.local/bin/claude
 ```
 
-`API 키  설정됨 (sk-ant-api...)` 이라고 초록색으로 나오면 준비 끝입니다.
+> 만약 `claude 명령을 찾을 수 없습니다` 가 나오면, 터미널에서 `claude --version` 이 되는지 확인하세요.
 
-> 💡 API 키는 컴퓨터 안에만 저장되고, 이 프로그램의 설정 파일에는 절대 기록되지 않습니다.
+<details>
+<summary>참고: Claude API로 바꾸고 싶다면 (선택)</summary>
+
+구독 사용량을 아끼고 싶거나 여러 편을 한꺼번에 뽑고 싶다면 API 방식으로 바꿀 수 있습니다.
+
+1. `open -e ~/.config/blogwriter/config.toml` 로 열어 `backend = "api"` 로 변경
+2. https://console.anthropic.com 에서 API 키 발급
+3. `echo 'export ANTHROPIC_API_KEY="sk-ant-여기에키"' >> ~/.zshrc` 실행 후 터미널 재시작
+
+글 한 편당 수백 원 수준의 요금이 부과됩니다.
+</details>
 
 ---
 
@@ -77,7 +84,7 @@ uv run blog write --file 자료.txt --source "https://원문주소"
 ### 실행하면 이렇게 진행됩니다
 
 ```
-글을 쓰기 시작합니다. (자료 3241자, 보통 1~2분 걸립니다)
+글을 쓰기 시작합니다. (Claude Code 구독 사용 · 자료 7332자 · 보통 2~4분)
 
   [1/4] 자료를 읽고 글의 각도와 목차를 잡는 중...
   [2/4] 본문을 쓰는 중 (가장 오래 걸립니다)...
@@ -94,7 +101,7 @@ uv run blog write --file 자료.txt --source "https://원문주소"
   - 후보 3
   …
 
-  이력 번호 1 · 예상 비용 약 $0.042
+  이력 번호 1 · 사용량 환산 약 $0.17 (구독으로 돌렸으므로 추가 청구는 없습니다)
 ```
 
 ### 결과물 열어 보기
@@ -187,7 +194,7 @@ open -e ~/.config/blogwriter/config.toml
 ```
 
 `write = "claude-sonnet-5"` 를 `write = "claude-opus-5"` 로 바꾸면 본문 품질이 올라갑니다.
-대신 비용이 2~3배가 됩니다. (그래도 글 한 편에 수백 원 수준)
+대신 구독 사용량을 2~3배 더 씁니다.
 
 ---
 
@@ -196,8 +203,8 @@ open -e ~/.config/blogwriter/config.toml
 | 증상 | 해결 |
 |------|------|
 | `zsh: command not found: uv` | 터미널을 껐다 켜세요. 그래도 안 되면 `export PATH="$HOME/.local/bin:$PATH"` 실행 |
-| `ANTHROPIC_API_KEY 환경변수가 없습니다` | 1-4번을 다시 하고 **터미널을 껐다 켜세요** |
-| `API 키가 올바르지 않습니다` | 키를 복사할 때 앞뒤 공백이나 따옴표가 섞였는지 확인 |
+| `claude 명령을 찾을 수 없습니다` | 터미널에서 `claude --version` 확인. 안 되면 터미널을 껐다 켜세요 |
+| `Claude Code 실행에 실패했습니다` | 터미널에서 `claude` 를 한 번 실행해 로그인 상태를 확인하세요 |
 | `자료가 너무 짧습니다` | 자료는 최소 100자 이상 필요합니다 |
 | `요청이 몰려 잠시 거부됐습니다` | 1~2분 뒤 다시 실행 |
 | `permission denied: ./setup.sh` | `chmod +x setup.sh` 실행 후 다시 `./setup.sh` |
@@ -226,7 +233,7 @@ uv run blog config
 ```bash
 uv sync --dev        # 의존성 설치
 uv run blog --help   # 실행
-uv run pytest -q     # 테스트 (Claude 호출은 전부 목킹 — API 키 불필요)
+uv run pytest -q     # 테스트 (Claude 호출은 전부 목킹 — 실제 호출 없음)
 uv run ruff check .  # 린트
 ```
 
@@ -238,7 +245,8 @@ src/blogwriter/
   config.py         config.toml + ANTHROPIC_API_KEY
   core/             ★ 파이프라인 (CLI를 전혀 모름 — 웹 UI 확장 시 재사용 지점)
     models.py       Source / Plan / Draft / Polish / Post
-    llm.py          Claude 호출 + 프롬프트 로드 + JSON 파싱 + 비용 계산
+    backends.py     Claude 호출 경로 2종 (claude-code CLI / Claude API)
+    llm.py          프롬프트 로드 + JSON 파싱 + 비용 계산
     planner.py      ② 기획   (Claude 호출 1)
     writer.py       ③ 작성   (Claude 호출 2)
     polisher.py     ④ 다듬기 (Claude 호출 3)

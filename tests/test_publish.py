@@ -80,7 +80,7 @@ def test_publish_copies_rich_and_returns_steps(captured):
     assert "테스트 제목" not in captured["html"]
     # 안내에는 제목과 태그가 그대로 나와야 한다
     assert any("테스트 제목" in step for step in result.steps)
-    assert any("#태그A #태그B" in step for step in result.steps)
+    assert any("태그A, 태그B" in step for step in result.steps)
 
 
 def test_publish_text_format_copies_plain_only(captured):
@@ -88,6 +88,13 @@ def test_publish_text_format_copies_plain_only(captured):
     NaverClipboardPublisher(plain_only=True).publish(post)
     assert "html" not in captured
     assert "##" not in captured["plain"]
+
+
+def test_tag_spaces_are_removed(captured):
+    """네이버 태그 입력창은 공백에서 잘리므로 공백을 없애고 안내한다."""
+    post = Post(title="제목", body=BODY, tags=["오픈소스 AI", "AI 스택"])
+    result = NaverClipboardPublisher().publish(post)
+    assert any("오픈소스AI, AI스택" in step for step in result.steps)
 
 
 def test_no_source_option(captured):

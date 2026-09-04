@@ -11,11 +11,11 @@ from blogwriter.store import db
 SOURCE_TEXT = "자료 원문이다. " * 20
 
 
-def test_run_produces_post_and_file(fake_client, isolated_config):
+def test_run_produces_post_and_file(fake_backend, isolated_config):
     post, run_id, path = run(
         Source(text=SOURCE_TEXT, kind="text", ref="https://example.com/a"),
         isolated_config,
-        client=fake_client,
+        backend=fake_backend,
     )
 
     # 첫 번째 제목 후보가 최종 제목이 된다
@@ -46,23 +46,23 @@ def test_run_produces_post_and_file(fake_client, isolated_config):
         conn.close()
 
 
-def test_three_claude_calls_in_order(fake_client, isolated_config):
-    run(Source(text=SOURCE_TEXT), isolated_config, client=fake_client)
+def test_three_claude_calls_in_order(fake_backend, isolated_config):
+    run(Source(text=SOURCE_TEXT), isolated_config, backend=fake_backend)
 
-    calls = fake_client.messages.calls
+    calls = fake_backend.calls
     assert len(calls) == 3
     # 1) 기획: 자료가 프롬프트에 들어간다
-    assert SOURCE_TEXT.strip()[:20] in calls[0]["messages"][0]["content"]
+    assert SOURCE_TEXT.strip()[:20] in calls[0]["prompt"]
     # 2) 작성: 기획안의 소제목이 프롬프트에 들어간다
-    assert "무엇이 달라졌나" in calls[1]["messages"][0]["content"]
+    assert "무엇이 달라졌나" in calls[1]["prompt"]
     # 3) 다듬기: 완성된 본문이 프롬프트에 들어간다
-    assert "또 본문이다" in calls[2]["messages"][0]["content"]
+    assert "또 본문이다" in calls[2]["prompt"]
 
 
-def test_failure_is_recorded(isolated_config, make_client):
-    broken = make_client(["JSON이 아닌 응답"])
+def test_failure_is_recorded(isolated_config, make_backend_with):
+    broken = make_backend_with(["JSON이 아닌 응답"])
     try:
-        run(Source(text=SOURCE_TEXT), isolated_config, client=broken)
+        run(Source(text=SOURCE_TEXT), isolated_config, backend=broken)
     except Exception:
         pass
     else:
@@ -73,3 +73,14 @@ def test_failure_is_recorded(isolated_config, make_client):
         assert db.recent(conn)[0].status == "failed"
     finally:
         conn.close()
+
+
+def test_local_file_path_is_not_leaked_as_source(fake_backend, isolated_config):
+    """--file 로 넣은 로컬 경로가 블로그에 출처로 노출되면 안 된다."""
+    post, _, path = run(
+        Source(text=SOURCE_TEXT, kind="file", ref="자료/기사.txt"),
+        isolated_config,
+        backend=fake_backend,
+    )
+    assert post.source_ref is None
+    assert "자료/기사.txt" not in path.read_text(encoding="utf-8")

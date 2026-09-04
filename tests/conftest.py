@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from blogwriter import config as config_module
 from blogwriter.config import Config
+from blogwriter.core.models import Usage
 
 PLAN_JSON = {
     "working_title": "임시 제목",
@@ -33,46 +33,29 @@ POLISH_JSON = {
 }
 
 
-@dataclass
-class _Block:
-    text: str
-    type: str = "text"
+class FakeBackend:
+    """Claude를 부르지 않고 미리 정해 둔 답을 순서대로 돌려주는 가짜 백엔드."""
 
+    name = "fake"
 
-@dataclass
-class _Usage:
-    input_tokens: int = 1000
-    output_tokens: int = 500
-
-
-@dataclass
-class _Response:
-    content: list[_Block]
-    usage: _Usage
-
-
-class _Messages:
     def __init__(self, replies: list[str]) -> None:
         self._replies = list(replies)
         self.calls: list[dict] = []
 
-    def create(self, **kwargs: object) -> _Response:
-        self.calls.append(kwargs)
+    def ask(
+        self, *, model: str, system: str, prompt: str, max_tokens: int = 16000
+    ) -> tuple[str, Usage]:
+        self.calls.append(
+            {"model": model, "system": system, "prompt": prompt, "max_tokens": max_tokens}
+        )
         if not self._replies:
             raise AssertionError("예상보다 많은 Claude 호출이 일어났습니다.")
-        return _Response(content=[_Block(self._replies.pop(0))], usage=_Usage())
-
-
-class FakeClient:
-    """anthropic.Anthropic 대신 쓰는 가짜 클라이언트 (API 호출 없음)."""
-
-    def __init__(self, replies: list[str]) -> None:
-        self.messages = _Messages(replies)
+        return self._replies.pop(0), Usage(input_tokens=1000, output_tokens=500, cost_usd=0.01)
 
 
 @pytest.fixture
-def fake_client() -> FakeClient:
-    return FakeClient(
+def fake_backend() -> FakeBackend:
+    return FakeBackend(
         [
             json.dumps(PLAN_JSON, ensure_ascii=False),
             DRAFT_BODY,
@@ -82,9 +65,9 @@ def fake_client() -> FakeClient:
 
 
 @pytest.fixture
-def make_client():
-    """원하는 응답을 주는 가짜 클라이언트를 만들어 주는 팩토리."""
-    return FakeClient
+def make_backend_with():
+    """원하는 응답을 주는 가짜 백엔드를 만들어 주는 팩토리."""
+    return FakeBackend
 
 
 @pytest.fixture

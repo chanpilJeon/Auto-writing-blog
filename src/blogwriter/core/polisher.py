@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import anthropic
-
 from blogwriter.core import llm
+from blogwriter.core.backends import Backend
 from blogwriter.core.models import Draft, Polish, Usage
 
 SYSTEM = "당신은 한국어 블로그 편집자다. 요청한 JSON만 정확히 출력한다."
 
 
 def polish(
-    client: anthropic.Anthropic,
+    backend: Backend,
     draft: Draft,
     *,
     model: str,
@@ -23,5 +22,5 @@ def polish(
         style_guide=style_guide,
         body=draft.body,
     )
-    text, usage = llm.ask(client, model=model, system=SYSTEM, prompt=prompt, max_tokens=2000)
+    text, usage = backend.ask(model=model, system=SYSTEM, prompt=prompt, max_tokens=2000)
     return Polish.from_dict(llm.parse_json(text)), usage

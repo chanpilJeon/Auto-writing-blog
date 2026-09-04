@@ -47,7 +47,8 @@ class NaverClipboardPublisher:
             "본문 칸을 클릭하고 ⌘+V 로 붙여넣습니다.",
         ]
         if post.tags:
-            steps.append(f"태그 칸에 입력:  {' '.join('#' + tag for tag in post.tags)}")
+            tags = ", ".join(tag.replace(" ", "") for tag in post.tags)
+            steps.append(f"태그 칸에 하나씩 입력:  {tags}")
         steps.append("내용을 한 번 읽어 보고 발행 버튼을 누릅니다.")
 
         if not self.plain_only:

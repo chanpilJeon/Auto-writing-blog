@@ -21,6 +21,10 @@ DATA_DIR = Path(
 
 DEFAULT_CONFIG_TOML = f"""\
 [model]
+# claude-code = 이미 쓰는 Claude 구독으로 돌린다 (API 키 불필요, 기본값)
+# api         = Claude API를 직접 호출한다 (ANTHROPIC_API_KEY 필요)
+backend = "claude-code"
+
 plan = "claude-sonnet-5"
 write = "claude-sonnet-5"    # 품질이 아쉬우면 "claude-opus-5"로 교체
 polish = "claude-sonnet-5"
@@ -41,11 +45,13 @@ class ConfigError(Exception):
 class Config:
     """실행에 필요한 설정 한 벌."""
 
+    backend: str = "claude-code"
     plan_model: str = "claude-sonnet-5"
     write_model: str = "claude-sonnet-5"
     polish_model: str = "claude-sonnet-5"
     drafts_dir: Path = field(default_factory=lambda: Path("~/BlogDrafts").expanduser())
     style_guide_path: Path = field(default_factory=lambda: STYLE_GUIDE_PATH)
+    claude_workdir: Path = field(default_factory=lambda: DATA_DIR / "claude-workdir")
 
     @property
     def style_guide(self) -> str:
@@ -85,17 +91,26 @@ def load() -> Config:
     style = raw.get("style", {})
 
     default = "claude-sonnet-5"
+    backend = str(model.get("backend", "claude-code")).strip().lower()
+    if backend not in {"claude-code", "api"}:
+        raise ConfigError(
+            f'config.toml 의 backend 값이 잘못됐습니다: "{backend}"\n'
+            '  "claude-code" 또는 "api" 만 쓸 수 있습니다.'
+        )
+
     return Config(
+        backend=backend,
         plan_model=model.get("plan", default),
         write_model=model.get("write", default),
         polish_model=model.get("polish", default),
         drafts_dir=Path(output.get("drafts_dir", "~/BlogDrafts")).expanduser(),
         style_guide_path=Path(style.get("guide", STYLE_GUIDE_PATH)).expanduser(),
+        claude_workdir=DATA_DIR / "claude-workdir",
     )
 
 
 def api_key() -> str:
-    """환경변수에서 Claude API 키를 읽는다. 없으면 안내와 함께 예외."""
+    """환경변수에서 Claude API 키를 읽는다. ``backend = "api"`` 일 때만 필요하다."""
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
         raise ConfigError(

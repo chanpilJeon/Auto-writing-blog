@@ -1,9 +1,11 @@
-"""Claude API 호출을 한곳에 모은 얇은 계층.
+"""프롬프트와 응답을 다루는 공용 유틸.
 
 planner / writer / polisher가 공통으로 쓰는 것:
 - 프롬프트 템플릿 로드 (``prompts/*.md``)
-- Claude 호출 + 토큰 사용량·비용 계산
-- 모델이 돌려준 JSON을 안전하게 파싱
+- 모델이 돌려준 JSON·마크다운을 안전하게 파싱
+- 토큰 수 → 비용 환산
+
+실제 Claude 호출은 ``core/backends.py``가 맡는다.
 """
 
 from __future__ import annotations
@@ -11,10 +13,6 @@ from __future__ import annotations
 import json
 import re
 from importlib import resources
-
-import anthropic
-
-from blogwriter.core.models import Usage
 
 # 1M 토큰당 달러 (입력, 출력). 모르는 모델은 비용 0으로 둔다.
 PRICING: dict[str, tuple[float, float]] = {
@@ -50,43 +48,6 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """토큰 수로 대략적인 비용(USD)을 계산한다."""
     price_in, price_out = PRICING.get(model, (0.0, 0.0))
     return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
-
-
-def ask(
-    client: anthropic.Anthropic,
-    *,
-    model: str,
-    system: str,
-    prompt: str,
-    max_tokens: int = 16000,
-) -> tuple[str, Usage]:
-    """Claude에게 한 번 물어보고 (텍스트, 사용량)을 돌려준다."""
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except anthropic.AuthenticationError as exc:
-        raise LLMError("API 키가 올바르지 않습니다. ANTHROPIC_API_KEY를 확인하세요.") from exc
-    except anthropic.RateLimitError as exc:
-        raise LLMError("요청이 몰려 잠시 거부됐습니다. 1~2분 뒤 다시 시도하세요.") from exc
-    except anthropic.APIConnectionError as exc:
-        raise LLMError("네트워크 연결에 실패했습니다. 인터넷 상태를 확인하세요.") from exc
-    except anthropic.APIStatusError as exc:
-        raise LLMError(f"Claude API 오류({exc.status_code}): {exc.message}") from exc
-
-    text = "\n".join(block.text for block in response.content if block.type == "text").strip()
-    if not text:
-        raise LLMError("Claude가 빈 응답을 돌려줬습니다. 자료가 너무 짧지 않은지 확인하세요.")
-
-    usage = Usage(
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
-        cost_usd=estimate_cost(model, response.usage.input_tokens, response.usage.output_tokens),
-    )
-    return text, usage
 
 
 _JSON_BLOCK = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)

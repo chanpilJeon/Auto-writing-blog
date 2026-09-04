@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import anthropic
-
 from blogwriter.core import llm
+from blogwriter.core.backends import Backend
 from blogwriter.core.models import Draft, Plan, Source, Usage
 
 SYSTEM = (
@@ -26,7 +25,7 @@ def _bullets(items: list[str]) -> str:
 
 
 def write_draft(
-    client: anthropic.Anthropic,
+    backend: Backend,
     source: Source,
     plan: Plan,
     *,
@@ -44,5 +43,5 @@ def write_draft(
         cautions=_bullets(plan.cautions),
         source=source.text,
     )
-    text, usage = llm.ask(client, model=model, system=SYSTEM, prompt=prompt, max_tokens=16000)
+    text, usage = backend.ask(model=model, system=SYSTEM, prompt=prompt, max_tokens=16000)
     return Draft(body=llm.strip_code_fence(text)), usage

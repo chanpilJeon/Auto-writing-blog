@@ -13,10 +13,10 @@
 | 언어/런타임 | Python 3.12 | 본문 추출·텍스트 처리 생태계가 압도적. Concept.md 파이프라인과 일치 |
 | 패키지/배포 | **uv** (`pyproject.toml`) | 설치 한 줄(`uv tool install`), 락파일로 재현 가능한 빌드, PyPI 배포까지 커버 |
 | CLI 프레임워크 | **Typer** | 서브커맨드·옵션·도움말 자동 생성, 타입 힌트 기반 |
-| LLM | **anthropic SDK** (Claude API) | 기획→작성→다듬기 3단계 호출. 기본 Sonnet, 작성 단계만 Opus 옵션 |
+| LLM | **Claude Code CLI**(기본) / anthropic SDK(선택) | 기획→작성→다듬기 3단계 호출. **이미 쓰는 구독으로 돌리므로 API 키가 필요 없다.** 기본 Sonnet, 작성 단계만 Opus 옵션 |
 | 본문 추출 | **trafilatura** | URL → 광고 제거된 본문 텍스트. 크롤링 실패 시 원문 텍스트 직접 입력 폴백 |
 | 로컬 저장 | 파일 시스템(마크다운) + **SQLite**(파이썬 내장) | 글 = `.md` 파일, 처리 이력·메타데이터 = SQLite 한 파일. 설치·운영 비용 0 |
-| 설정 | `~/.config/blogwriter/config.toml` + 환경변수 `ANTHROPIC_API_KEY` | API 키는 파일에 저장하지 않음 |
+| 설정 | `~/.config/blogwriter/config.toml` (`backend = "claude-code" \| "api"`) | api 방식일 때만 `ANTHROPIC_API_KEY` 필요. 키는 파일에 저장하지 않음 |
 | 출력 형식 | frontmatter 포함 마크다운 (`python-frontmatter`) | 어떤 발행 경로로든 변환 가능한 중립 포맷 |
 | 발행 | Phase 3에서 플랫폼 확정 후 어댑터 추가 | 클립보드 복사(`pyperclip`) → WordPress/GitHub Pages 어댑터 순 |
 | 테스트 | pytest + API 호출 목킹(`respx`/fixture) | 프롬프트 회귀 확인용 골든 파일 테스트 |
@@ -97,6 +97,20 @@ blog config                                     # 설정 확인/편집
 - [x] `setup.sh` 작성 (§6) 및 동작 확인: 클린 클론 → `./setup.sh` → `blog --help` 성공
 - [x] git 저장소 초기화, `.gitignore` (`.venv/`, `*.db`, `__pycache__/`)
 
+### Phase 1.5 — 실행 경로 변경: Claude API → Claude Code (2026-09-04 사용자 결정)
+- [x] `core/backends.py`: `ClaudeCodeBackend`(기본) / `ApiBackend` 두 경로를 같은 인터페이스로
+- [x] `claude -p --output-format json` 호출. 도구·MCP·슬래시커맨드 전부 끔
+  - `--allowed-tools ""` `--strict-mcp-config` `--disable-slash-commands`
+  - 전용 작업 폴더에서 실행 → 프로젝트 CLAUDE.md가 글에 섞이는 것 방지 + 프롬프트 캐시 재사용
+  - 프롬프트는 인자가 아니라 **표준입력**으로 전달 (긴 자료의 인자 길이 제한 회피)
+- [x] `config.toml`에 `backend` 항목 추가, `blog config`에 연결 상태 표시
+- [x] planner/writer/polisher/pipeline을 Backend 인터페이스로 전환
+- [x] setup.sh: API 키 대신 `claude` 설치 여부 확인
+- **근거**: 단일 사용자 도구인데 API 키를 따로 발급·관리할 이유가 없다.
+  이미 결제 중인 Claude 구독으로 돌리면 추가 과금이 없다.
+  실측: 자료 7,332자 → 글 1편 1분 35초, 사용량 환산 약 $0.17 (구독이면 추가 청구 없음).
+  2회차부터는 프롬프트 캐시가 재사용돼 호출당 입력 비용이 약 1/10로 떨어진다.
+
 ### Phase 1 — MVP: 텍스트 → 완성 글 (1~2일)
 - [x] `config.py`: `ANTHROPIC_API_KEY` 검증, `config.toml` 생성 (모델명·출력 폴더·스타일 가이드 경로)
 - [x] `models.py`: `Source`, `Plan`, `Draft`, `Post` 데이터클래스 정의
@@ -109,7 +123,14 @@ blog config                                     # 설정 확인/편집
 - [ ] **style-guide.md 작성**: 내가 쓴 글 2~3편 수집 + 말투/구조/금지어 정의
   - [x] 기본 스타일 가이드 템플릿 작성 → `~/.config/blogwriter/style-guide.md` 에 자동 생성
   - [ ] 내가 쓴 글 2~3편을 "좋은 예시" 항목에 붙여넣기 ← **사용자 작업**
-- [ ] 검증 루프: 서로 다른 주제 자료 10건으로 글 생성 → 스타일 가이드·프롬프트 튜닝 (품질 게이트: "내가 쓴 글 같다"고 느껴질 때까지) ← **사용자 작업 (API 키 필요)**
+- [ ] 검증 루프: 서로 다른 주제 자료 10건으로 글 생성 → 스타일 가이드·프롬프트 튜닝 (품질 게이트: "내가 쓴 글 같다"고 느껴질 때까지)
+  - [x] 1건차(엔비디아-허깅페이스, 7,332자) 실행 → 발견한 문제 4건 수정
+    - 로컬 파일 경로가 출처로 노출 → 공개 URL만 내보내도록 수정
+    - 출처가 본문과 발행 단계에 중복 → 본문 출처 표기 금지 규칙 추가
+    - 도입부에 소제목이 붙고 "오늘은 ~ 정리해본다" 예고 문장 발생 → 금지 규칙 추가
+    - 진행 중인 딜에 "될 뻔한" 등 확정 표현 → 자료의 시제를 따르도록 규칙 추가
+    - 태그에 공백("오픈소스 AI") → 네이버 태그창에서 잘리므로 공백 금지 규칙 추가
+  - [ ] 2~10건차 ← **사용자 작업**
 
 > 참고: 파이프라인을 순서대로 돌리는 `core/pipeline.py`와 Claude 호출을 모은 `core/llm.py`를
 > §2 구조에 추가로 두었다. CLI는 이 두 파일만 호출하므로 core ↔ CLI 경계는 그대로다.
