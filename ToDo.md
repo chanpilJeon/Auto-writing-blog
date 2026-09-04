@@ -98,16 +98,23 @@ blog config                                     # 설정 확인/편집
 - [x] git 저장소 초기화, `.gitignore` (`.venv/`, `*.db`, `__pycache__/`)
 
 ### Phase 1 — MVP: 텍스트 → 완성 글 (1~2일)
-- [ ] `config.py`: `ANTHROPIC_API_KEY` 검증, `config.toml` 생성 (모델명·출력 폴더·스타일 가이드 경로)
-- [ ] `models.py`: `Source`, `Plan`, `Draft`, `Post` 데이터클래스 정의
-- [ ] `prompts/plan.md`: 자료 → 글 각도 + 목차 JSON 산출 프롬프트
-- [ ] `prompts/write.md`: 목차 + 스타일 가이드 → 본문 마크다운 프롬프트 (원문 재서술 필수 규칙 포함)
-- [ ] `prompts/polish.md`: 본문 → 제목 후보 5개·태그·메타 설명 JSON 프롬프트
-- [ ] `planner.py` / `writer.py` / `polisher.py` 구현 — 각 단계 산출물을 SQLite에 저장(재실행 대비)
-- [ ] `posts.py`: frontmatter(제목·날짜·태그·출처·상태) 붙여 `~/BlogDrafts/YYYY-MM-DD-슬러그.md` 저장
-- [ ] `cli.py`: `blog write --text`, `blog list` 연결
+- [x] `config.py`: `ANTHROPIC_API_KEY` 검증, `config.toml` 생성 (모델명·출력 폴더·스타일 가이드 경로)
+- [x] `models.py`: `Source`, `Plan`, `Draft`, `Post` 데이터클래스 정의
+- [x] `prompts/plan.md`: 자료 → 글 각도 + 목차 JSON 산출 프롬프트
+- [x] `prompts/write.md`: 목차 + 스타일 가이드 → 본문 마크다운 프롬프트 (원문 재서술 필수 규칙 포함)
+- [x] `prompts/polish.md`: 본문 → 제목 후보 5개·태그·메타 설명 JSON 프롬프트
+- [x] `planner.py` / `writer.py` / `polisher.py` 구현 — 각 단계 산출물을 SQLite에 저장(재실행 대비)
+- [x] `posts.py`: frontmatter(제목·날짜·태그·출처·상태) 붙여 `~/BlogDrafts/YYYY-MM-DD-슬러그.md` 저장
+- [x] `cli.py`: `blog write --text`, `blog write --file`, `blog config`, `blog list` 연결
 - [ ] **style-guide.md 작성**: 내가 쓴 글 2~3편 수집 + 말투/구조/금지어 정의
-- [ ] 검증 루프: 서로 다른 주제 자료 10건으로 글 생성 → 스타일 가이드·프롬프트 튜닝 (품질 게이트: "내가 쓴 글 같다"고 느껴질 때까지)
+  - [x] 기본 스타일 가이드 템플릿 작성 → `~/.config/blogwriter/style-guide.md` 에 자동 생성
+  - [ ] 내가 쓴 글 2~3편을 "좋은 예시" 항목에 붙여넣기 ← **사용자 작업**
+- [ ] 검증 루프: 서로 다른 주제 자료 10건으로 글 생성 → 스타일 가이드·프롬프트 튜닝 (품질 게이트: "내가 쓴 글 같다"고 느껴질 때까지) ← **사용자 작업 (API 키 필요)**
+
+> 참고: 파이프라인을 순서대로 돌리는 `core/pipeline.py`와 Claude 호출을 모은 `core/llm.py`를
+> §2 구조에 추가로 두었다. CLI는 이 두 파일만 호출하므로 core ↔ CLI 경계는 그대로다.
+> 스타일 가이드의 실제 위치는 `~/.config/blogwriter/style-guide.md` (설치본에서도 동작하도록
+> 저장소 루트가 아닌 설정 폴더에 둔다. 기본 템플릿은 `src/blogwriter/prompts/style-guide.md`).
 
 ### Phase 2 — 입력 확장 + 검토 워크플로우 (2~3일)
 - [ ] `ingest.py`: URL 입력 → trafilatura 본문 추출, 실패 시 명확한 에러 + `--text` 폴백 안내

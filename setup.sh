@@ -26,26 +26,9 @@ if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   echo ""
 fi
 
-# 4. 기본 설정 파일 생성
-CONFIG_DIR="$HOME/.config/blogwriter"
-if [ ! -f "$CONFIG_DIR/config.toml" ]; then
-  mkdir -p "$CONFIG_DIR"
-  cat > "$CONFIG_DIR/config.toml" <<'TOML'
-[model]
-plan = "claude-sonnet-5"
-write = "claude-sonnet-5"    # 품질이 아쉬우면 "claude-opus-5"로 교체
-polish = "claude-sonnet-5"
-
-[output]
-drafts_dir = "~/BlogDrafts"
-
-[style]
-guide = "./style-guide.md"
-TOML
-  echo "-> 설정 파일 생성: $CONFIG_DIR/config.toml"
-else
-  echo "-> 설정 파일 확인: $CONFIG_DIR/config.toml (이미 있어서 건드리지 않음)"
-fi
+# 4. 기본 설정 파일·스타일 가이드 생성 (blogwriter가 직접 만든다)
+uv run blog config >/dev/null 2>&1 || true
+echo "-> 설정 위치: $HOME/.config/blogwriter/"
 
 # 5. 동작 확인
 if uv run blog --help >/dev/null 2>&1; then

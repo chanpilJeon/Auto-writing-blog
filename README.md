@@ -1,74 +1,176 @@
 # blogwriter (블로그 자동 작성 CLI)
 
-정보(URL·텍스트·메모)를 던져주면 내 말투로 쓰인 블로그 글 초안을 만들어 주는 터미널 도구.
+정보(기사 텍스트·메모·자료)를 던져주면 내 말투로 쓰인 블로그 글 초안을 만들어 주는 터미널 도구.
 
 - 기획 배경: [Concept.md](Concept.md)
 - 개발 계획·체크리스트: [ToDo.md](ToDo.md)
 
-현재 상태: **Phase 0 완료 — 프로그램 뼈대(명령어 골격)까지 동작합니다.**
-글을 실제로 써 주는 기능은 Phase 1에서 만듭니다.
+현재 상태: **Phase 1 완료 — 텍스트를 넣으면 완성된 글 초안이 나옵니다.**
+(URL 자동 크롤링은 Phase 2, 발행 기능은 Phase 3에서 만듭니다.)
 
 ---
 
-## 처음 실행해 보기 (비개발자용 안내)
+## 1. 처음 한 번만 하는 준비
 
-### 1. 터미널 열기
+### 1-1. 터미널 열기
 `Command(⌘) + 스페이스` → `터미널` 입력 → 엔터.
 
-### 2. 프로젝트 폴더로 이동
-아래 한 줄을 복사해서 터미널에 붙여넣고 엔터를 누르세요.
+### 1-2. 프로젝트 폴더로 이동
+아래 한 줄을 복사해서 붙여넣고 엔터.
 
 ```bash
 cd ~/프로젝트/블로그-자동작성/Auto-writing-blog
 ```
 
-### 3. 셋업 스크립트 한 번 실행
-필요한 것(파이썬, 라이브러리, 설정 파일)을 알아서 준비합니다. 처음 한 번만 하면 됩니다.
+### 1-3. 셋업 스크립트 실행
+필요한 것(파이썬, 라이브러리, 설정 파일)을 알아서 준비합니다.
 
 ```bash
 ./setup.sh
 ```
 
 마지막에 `[완료] 셋업이 끝났습니다.` 가 나오면 성공입니다.
-(중간에 `ANTHROPIC_API_KEY가 설정되어 있지 않습니다`라는 안내가 나올 수 있는데,
-지금 단계에서는 무시해도 됩니다. 글 작성 기능을 만들 때 필요합니다.)
 
-### 4. 잘 설치됐는지 확인
-```bash
-uv run blog --help
-```
+### 1-4. API 키 넣기 (글을 쓰려면 필수)
 
-아래처럼 명령어 목록이 나오면 정상입니다.
+이 프로그램은 Claude에게 글을 대신 쓰게 하므로 **Claude API 키**가 필요합니다.
 
-```
-Commands
-  version   설치된 blogwriter 버전을 출력한다.
-  config    설정 파일 위치와 현재 설정값을 보여준다.
-  write     자료를 받아 블로그 글 초안을 작성한다.
-  list      지금까지 생성한 글 이력을 보여준다.
-  plan      글의 각도와 목차(기획안)까지만 만든다.
-  resume    저장된 기획안으로 본문 작성을 이어서 한다.
-  publish   완성된 글을 발행(또는 클립보드 복사)한다.
-```
-
-버전도 확인해 보세요.
+1. https://console.anthropic.com 에 로그인 → 왼쪽 메뉴 `API Keys` → `Create Key`
+2. `sk-ant-` 로 시작하는 긴 문자열이 나옵니다. **그 창을 닫으면 다시 볼 수 없으니 복사해 두세요.**
+3. 터미널에 아래를 붙여넣되, `sk-ant-여기에키` 부분을 복사한 키로 바꾸세요.
 
 ```bash
-uv run blog version
+echo 'export ANTHROPIC_API_KEY="sk-ant-여기에키"' >> ~/.zshrc
 ```
 
-> `write`, `plan` 같은 명령은 지금 실행하면
-> `아직 만들지 않은 기능입니다` 라고 나옵니다. **정상입니다.** 다음 단계에서 채웁니다.
+4. **터미널을 완전히 껐다가 다시 켭니다.** (안 그러면 키가 적용되지 않습니다)
+5. 폴더로 다시 이동한 뒤 아래로 확인:
+
+```bash
+cd ~/프로젝트/블로그-자동작성/Auto-writing-blog && uv run blog config
+```
+
+`API 키  설정됨 (sk-ant-api...)` 이라고 초록색으로 나오면 준비 끝입니다.
+
+> 💡 API 키는 컴퓨터 안에만 저장되고, 이 프로그램의 설정 파일에는 절대 기록되지 않습니다.
 
 ---
 
-## 자주 나오는 문제
+## 2. 글 쓰기
+
+### 방법 A — 자료를 직접 붙여넣기
+
+```bash
+uv run blog write --text "여기에 기사나 자료 내용을 통째로 붙여넣으세요"
+```
+
+### 방법 B — 자료가 긴 경우 (파일로 저장해서 넣기, 추천)
+
+긴 기사는 따옴표 안에 넣기 불편합니다. 메모장이나 텍스트편집기에 붙여넣고 `자료.txt` 로 저장한 뒤:
+
+```bash
+uv run blog write --file 자료.txt --source "https://원문주소"
+```
+
+`--source` 는 선택입니다. 넣으면 글 파일에 출처가 함께 기록됩니다.
+
+### 실행하면 이렇게 진행됩니다
+
+```
+글을 쓰기 시작합니다. (자료 3241자, 보통 1~2분 걸립니다)
+
+  [1/4] 자료를 읽고 글의 각도와 목차를 잡는 중...
+  [2/4] 본문을 쓰는 중 (가장 오래 걸립니다)...
+  [3/4] 제목 후보와 태그를 뽑는 중...
+  [4/4] 파일로 저장하는 중...
+
+[완료] 초안이 만들어졌습니다.
+  제목    (Claude가 고른 제목)
+  태그    태그1, 태그2, 태그3
+  저장    /Users/…/BlogDrafts/2026-09-04-제목.md
+
+다른 제목 후보
+  - 후보 2
+  - 후보 3
+  …
+
+  이력 번호 1 · 예상 비용 약 $0.042
+```
+
+### 결과물 열어 보기
+
+```bash
+open ~/BlogDrafts
+```
+
+Finder가 열리면 방금 만든 `.md` 파일을 더블클릭하세요.
+파일 맨 위의 `---` 사이 부분은 제목·태그 같은 메타정보이고, 그 아래가 본문입니다.
+블로그에 올릴 때는 본문 부분만 복사해서 붙여넣으면 됩니다.
+
+---
+
+## 3. 지금까지 쓴 글 목록 보기
+
+```bash
+uv run blog list
+```
+
+```
+번호 날짜                 상태       제목
+2    2026-09-04T21:40:11  polished   두 번째로 쓴 글 제목
+1    2026-09-04T20:12:03  polished   첫 번째로 쓴 글 제목
+
+합계 예상 비용 약 $0.085
+```
+
+---
+
+## 4. 글 품질을 올리는 가장 중요한 한 가지
+
+**스타일 가이드에 내가 쓴 글을 붙여넣는 것.** 규칙을 백 줄 적는 것보다 실제 글 두 편이 훨씬 효과가 큽니다.
+
+```bash
+open -e ~/.config/blogwriter/style-guide.md
+```
+
+파일 맨 아래 `## 좋은 예시` 부분에 직접 쓴 글 2~3편을 통째로 붙여넣고 저장하세요.
+다음 번 `blog write` 부터 바로 반영됩니다. 말투가 마음에 안 들면 위쪽 "말투 / 금지 사항"도 고치면 됩니다.
+
+### 모델 바꾸기 (글이 더 잘 써졌으면 할 때)
+
+```bash
+open -e ~/.config/blogwriter/config.toml
+```
+
+`write = "claude-sonnet-5"` 를 `write = "claude-opus-5"` 로 바꾸면 본문 품질이 올라갑니다.
+대신 비용이 2~3배가 됩니다. (그래도 글 한 편에 수백 원 수준)
+
+---
+
+## 5. 자주 나오는 문제
 
 | 증상 | 해결 |
 |------|------|
-| `zsh: command not found: uv` | 터미널을 껐다 켜세요. 그래도 안 되면 `export PATH="$HOME/.local/bin:$PATH"` 를 실행 |
+| `zsh: command not found: uv` | 터미널을 껐다 켜세요. 그래도 안 되면 `export PATH="$HOME/.local/bin:$PATH"` 실행 |
+| `ANTHROPIC_API_KEY 환경변수가 없습니다` | 1-4번을 다시 하고 **터미널을 껐다 켜세요** |
+| `API 키가 올바르지 않습니다` | 키를 복사할 때 앞뒤 공백이나 따옴표가 섞였는지 확인 |
+| `자료가 너무 짧습니다` | 자료는 최소 100자 이상 필요합니다 |
+| `요청이 몰려 잠시 거부됐습니다` | 1~2분 뒤 다시 실행 |
 | `permission denied: ./setup.sh` | `chmod +x setup.sh` 실행 후 다시 `./setup.sh` |
-| `no such file or directory` | 2번 폴더 이동 명령을 건너뛰지 않았는지 확인 |
+
+무슨 파일이 어디 있는지 헷갈리면 언제든:
+
+```bash
+uv run blog config
+```
+
+---
+
+## 6. 아직 안 되는 것 (다음 단계)
+
+- URL만 넣으면 자동으로 본문 긁어오기 → **Phase 2**
+- 목차를 먼저 보여주고 승인받은 뒤 본문 쓰기 (`blog plan` / `blog resume`) → **Phase 2**
+- 완성된 글을 HTML로 바꿔 클립보드에 복사 (네이버·티스토리 붙여넣기용) → **Phase 3**
 
 ---
 
@@ -77,9 +179,25 @@ uv run blog version
 ```bash
 uv sync --dev        # 의존성 설치
 uv run blog --help   # 실행
-uv run pytest -q     # 테스트
+uv run pytest -q     # 테스트 (Claude 호출은 전부 목킹 — API 키 불필요)
 uv run ruff check .  # 린트
 ```
 
-- 파이프라인 본체는 `src/blogwriter/core/`에 두고, `cli.py`는 그것을 터미널에 연결만 한다.
-  (나중에 웹 UI가 필요해져도 `core/`를 그대로 재사용하기 위한 경계)
+구조 (자세한 내용은 [ToDo.md](ToDo.md) §2):
+
+```
+src/blogwriter/
+  cli.py            Typer CLI — core를 터미널에 연결하는 껍데기
+  config.py         config.toml + ANTHROPIC_API_KEY
+  core/             ★ 파이프라인 (CLI를 전혀 모름 — 웹 UI 확장 시 재사용 지점)
+    models.py       Source / Plan / Draft / Polish / Post
+    llm.py          Claude 호출 + 프롬프트 로드 + JSON 파싱 + 비용 계산
+    planner.py      ② 기획   (Claude 호출 1)
+    writer.py       ③ 작성   (Claude 호출 2)
+    polisher.py     ④ 다듬기 (Claude 호출 3)
+    pipeline.py     ①~⑤ 순서대로 실행하는 오케스트레이터
+  store/
+    db.py           SQLite 이력 (~/.local/share/blogwriter/blogwriter.db)
+    posts.py        frontmatter 마크다운 저장 (~/BlogDrafts/)
+  prompts/          plan.md / write.md / polish.md / style-guide.md(기본 템플릿)
+```
